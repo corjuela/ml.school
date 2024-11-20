@@ -237,6 +237,9 @@ class Training(FlowSpec, FlowMixin):
         the model using the test data for this fold.
         """
         import mlflow
+        from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+        import matplotlib.pyplot as plt
+        import numpy as np
 
         logging.info("Evaluating fold %d...", self.fold)
 
@@ -266,6 +269,23 @@ class Training(FlowSpec, FlowMixin):
                 },
             )
 
+            # TODO: Let's get the predictions for the test data. to create a confusion matrix later
+            predictions = self.model.predict(self.x_test)
+            predictions = np.argmax(predictions, axis=1)
+            # print(self.y_test)
+            # predictions needs to be dealt with as they're coming straight from the softmax layer
+
+            # # Let's plot the confusion matrix for the overall performance of the model.
+            # # This is useful to understand how well the model is performing on the entire
+            # # dataset. 
+            cm = confusion_matrix(self.y_test, predictions)
+            disp = ConfusionMatrixDisplay(cm)
+            disp.plot()
+            # Log the confusion matrix as an artifact
+            plt.savefig(f"confusion_matrix-fold{self.fold}.png")
+            mlflow.log_artifact(f"confusion_matrix-fold{self.fold}.png")
+
+
         # When we finish evaluating every fold in the cross-validation process, we want
         # to evaluate the overall performance of the model by averaging the scores from
         # each fold.
@@ -280,7 +300,7 @@ class Training(FlowSpec, FlowMixin):
         determine the final model performance.
         """
         import mlflow
-        import numpy as np
+        import numpy as np        
 
         # We need access to the `mlflow_run_id` and `mlflow_tracking_uri` artifacts
         # that we set at the start of the flow, but since we are in a join step, we
@@ -308,7 +328,7 @@ class Training(FlowSpec, FlowMixin):
                     "cross_validation_loss": self.loss,
                     "cross_validation_loss_std": self.loss_std,
                 },
-            )
+            )        
 
         # After we finish evaluating the cross-validation process, we can send the flow
         # to the registration step to register where we'll register the final version of
